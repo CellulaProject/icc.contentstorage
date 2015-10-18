@@ -15,18 +15,7 @@ from zope.interface import implementer
 import hashlib
 from kyotocabinet import DB
 import os
-
-def hexdigest(digest):
-    """Convert byte digest to
-    hex digest
-    Arguments:
-    - `digest`: Byte array representing
-    digest
-    """
-    return ''.join(["{:02x}".format(b) for b in d])
-
-def bindigest(digest):
-    return bytearray.fromhex(digest)
+from icc.contentstorage import hexdigest,bindigest
 
 @implementer(IDocumentStorage)
 class KiotoCabinetDocStorage(object):
@@ -69,10 +58,7 @@ class KiotoCabinetDocStorage(object):
         Arguments:
         - `key`: Key of a content to be deleted.
         """
-        if type(key)==StringType:
-            key=bindigest(key)
-        if not self.db.resolve(key):
-            raise KeyError('wrong key')
+        key=self.resolve(key):
         return self.db.get(key)
 
     def remove(self, key):
@@ -84,9 +70,7 @@ class KiotoCabinetDocStorage(object):
         """
 
         key=self.resolve(key)
-        if not key :
-            raise KeyError('wrong key')
-        return key
+        return self.db.remove(key)
 
     def resolve(self, key):
         """Figure out a content existence stored
