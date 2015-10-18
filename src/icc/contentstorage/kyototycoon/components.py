@@ -14,7 +14,7 @@ class KiotoTycoonDocStorage(object):
         self.connect(host=host,port=port)
 
     def connect(self, **kwargs):
-        self.conn=KyotoTycoon(binary=True)
+        self.conn=KyotoTycoon(binary=False)
         self.conn.open(**kwargs)
 
     def clear(self):
@@ -25,9 +25,9 @@ class KiotoTycoonDocStorage(object):
     def put(self, content):
         m=hashlib.sha256()
         m.update(content)
-        key=m.digest()
+        key=m.hexdigest()
         self.conn.set(key, content)
-        return hexdigest(key)
+        return key
 
     def get(self, key):
         """Returns a content stored under
@@ -58,11 +58,11 @@ class KiotoTycoonDocStorage(object):
         Arguments:
         - `key`: Key of a content to be checked.
         """
-        if type(key)==str:
-            key=bindigest(key)
-        if self.db.check(key):
+        if type(key)!=str:
+            key=hexdigest(key)
+        if self.conn.check(key):
             return key
-        return False
+        raise KeyError("no such key")
 
     def begin(self): # FIXME: Does this affect to a throughoutput?
         pass
