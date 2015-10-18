@@ -1,6 +1,6 @@
 from zope.interface import Interface
 
-class IDocumentStorge(object):
+class IDocumentStorage(Interface):
     """Document key-content storage interface.
     The Storage can only
     1. save a document (any bytes) under an sha256 integer ID;

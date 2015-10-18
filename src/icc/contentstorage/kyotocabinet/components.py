@@ -15,7 +15,6 @@ from zope.interface import implementer
 import hashlib
 from kyotocabinet import DB
 import os
-from types import StringType
 
 def hexdigest(digest):
     """Convert byte digest to
@@ -26,7 +25,10 @@ def hexdigest(digest):
     """
     return ''.join(["{:02x}".format(b) for b in d])
 
-@implementer(IDocumentStorge)
+def bindigest(digest):
+    return bytearray.fromhex(digest)
+
+@implementer(IDocumentStorage)
 class KiotoCabinetDocStorage(object):
     """Stores content in a kyotocabinet cool DBM.
     """
@@ -45,8 +47,8 @@ class KiotoCabinetDocStorage(object):
 
     def open(self, filename):
         self.db=DB()
-        if not db.open("casket.kch", DB.OWRITER | DB.OCREATE):
-            raise os.IOError("open error: " + str(db.error()))
+        if not self.db.open(filename, DB.OWRITER | DB.OCREATE):
+            raise IOError("open error: '" + str(self.db.error())+"' on file:" + filename)
 
     def clear(self):
         """Removes all records in the storage.
@@ -93,7 +95,7 @@ class KiotoCabinetDocStorage(object):
         Arguments:
         - `key`: Key of a content to be checked.
         """
-        if type(key)==StringType:
+        if type(key)==str:
             key=bindigest(key)
         if self.db.resolve(key):
             return key
