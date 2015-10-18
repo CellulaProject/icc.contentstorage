@@ -11,13 +11,11 @@ class KiotoTycoonDocStorage(object):
     """
 
     def __init__(self, host="127.0.0.1", port=11978):
-        self.connection={'host':host, 'port':port}
-        self.connect(**connection)
+        self.connect(host=host,port=port)
 
     def connect(self, **kwargs):
         self.conn=KyotoTycoon(binary=True)
-        if not self.conn.open(**kwargs):
-            self.raise RuntimeError('cannot connect to server')
+        self.conn.open(**kwargs)
 
     def clear(self):
         """Removes all records in the storage.
@@ -38,7 +36,7 @@ class KiotoTycoonDocStorage(object):
         Arguments:
         - `key`: Key of a content to be deleted.
         """
-        key=self.resolve(key):
+        key=self.resolve(key)
         return self.conn.get(key)
 
     def remove(self, key):
