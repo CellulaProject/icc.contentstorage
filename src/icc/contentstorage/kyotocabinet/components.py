@@ -58,7 +58,7 @@ class KiotoCabinetDocStorage(object):
         Arguments:
         - `key`: Key of a content to be deleted.
         """
-        key=self.resolve(key):
+        key=self.resolve(key)
         return self.db.get(key)
 
     def remove(self, key):
@@ -70,7 +70,8 @@ class KiotoCabinetDocStorage(object):
         """
 
         key=self.resolve(key)
-        return self.db.remove(key)
+        self.db.remove(key)
+        return hexdigest(key)
 
     def resolve(self, key):
         """Figure out a content existence stored
@@ -81,7 +82,7 @@ class KiotoCabinetDocStorage(object):
         """
         if type(key)==str:
             key=bindigest(key)
-        if self.db.resolve(key):
+        if self.db.check(key):
             return key
         return False
 

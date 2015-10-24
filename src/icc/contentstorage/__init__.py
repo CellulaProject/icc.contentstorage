@@ -5,7 +5,7 @@ def hexdigest(digest):
     - `digest`: Byte array representing
     digest
     """
-    return ''.join(["{:02x}".format(b) for b in d])
+    return ''.join(["{:02x}".format(b) for b in digest])
 
 def bindigest(digest):
     return bytearray.fromhex(digest)
