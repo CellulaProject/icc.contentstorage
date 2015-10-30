@@ -1,3 +1,5 @@
+import mmh3
+
 def hexdigest(digest):
     """Convert byte digest to
     hex digest
@@ -9,3 +11,9 @@ def hexdigest(digest):
 
 def bindigest(digest):
     return bytearray.fromhex(digest)
+
+def hash_128(content):
+    return mmh3.hash_bytes(content)
+
+def hash_64(content):
+    h=hash_128(content)[4:12]
