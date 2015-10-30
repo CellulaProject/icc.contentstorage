@@ -12,10 +12,9 @@ xmlconfig(resource_stream(package, "configure.zcml"))
 
 from icc.contentstorage.interfaces import IDocumentStorage
 from zope.interface import implementer
-import hashlib
 from kyotocabinet import DB
 import os
-from icc.contentstorage import hexdigest,bindigest
+from icc.contentstorage import hexdigest,intdigest,hash64_int
 
 @implementer(IDocumentStorage)
 class KiotoCabinetDocStorage(object):
@@ -45,9 +44,7 @@ class KiotoCabinetDocStorage(object):
         self.db.clear()
 
     def put(self, content):
-        m=hashlib.sha256()
-        m.update(content)
-        key=m.digest()
+        key=hash64_int()
         self.db.set(key, content)
         return hexdigest(key)
 
@@ -81,7 +78,7 @@ class KiotoCabinetDocStorage(object):
         - `key`: Key of a content to be checked.
         """
         if type(key)==str:
-            key=bindigest(key)
+            key=intdigest(key)
         if self.db.check(key):
             return key
         return False
