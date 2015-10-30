@@ -14,6 +14,7 @@ setup(
         'zope.component [zcml]',
         # 'kyoto-tycoon-ng',
         'python-kyototycoon-ng',
+        'murmurhash3',
     ],
     #dependency_links = ['http://github.com/eugeneai/python-kyototycoon/tarball/master#egg=python-kyototycoon-ng-0.7.4'],
 )
