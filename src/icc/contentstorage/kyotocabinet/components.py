@@ -11,13 +11,14 @@ xmlconfig(resource_stream(package, "configure.zcml"))
 """
 
 from icc.contentstorage.interfaces import IDocumentStorage
-from zope.interface import implementer
+from zope.interface import implementer, Interface
 from kyotocabinet import DB
 import os
 from icc.contentstorage import hexdigest,intdigest,hash64_int
+from zope.component import getUtility
 
 @implementer(IDocumentStorage)
-class KiotoCabinetDocStorage(object):
+class KyotoCabinetDocStorage(object):
     """Stores content in a kyotocabinet cool DBM.
     """
 
@@ -101,3 +102,16 @@ class KiotoCabinetDocStorage(object):
         """Commit a transaction.
         """
         self.db.end_transaction(commit=False)
+
+class Storage(KyotoCabinetDocStorage):
+    def __init__(self, ):
+        """Initializes with a calue from an .ini section.
+        [content_storage]
+        datapath="/home/eugeneai/tmp/cellula-data/content.kch"
+        """
+
+        config=getUtility(Interface, name='configuration')
+
+        filename = config['content_storage']['file']
+
+        KyotoCabinetDocStorage.__init__(self, filename)

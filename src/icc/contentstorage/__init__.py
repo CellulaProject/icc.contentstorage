@@ -1,5 +1,7 @@
 import mmh3 as mmh3
 
+from icc.contentstorage.interfaces import IDocumentStorage
+
 def hexdigest(digest):
     """Convert byte digest to
     hex digest
