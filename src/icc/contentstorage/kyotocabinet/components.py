@@ -45,7 +45,7 @@ class KyotoCabinetDocStorage(object):
         self.db.clear()
 
     def put(self, content):
-        key=hash64_int()
+        key=hash64_int(content)
         self.db.set(key, content)
         return hexdigest(key)
 
@@ -113,5 +113,6 @@ class Storage(KyotoCabinetDocStorage):
         config=getUtility(Interface, name='configuration')
 
         filename = config['content_storage']['file']
+        filename=filename.strip("'").strip('"')
 
         KyotoCabinetDocStorage.__init__(self, filename)
