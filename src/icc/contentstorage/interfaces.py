@@ -17,33 +17,36 @@ class IDocumentStorage(Interface):
     All the metadata is stored elsewhere.
     """
 
-    def put(content):
+    def put(content, metadata_dictionary):
         """Put a content in a storage.
-        Returns a sha256 ID as an integer.
+        Returns a murmur3 128 bit ID as hex string.
+        If metadat_dictioary is supplied the
+        storage can guess wether or not to compress
+        data.
         """
 
-    def get(sha256_id):
+    def get(murmur128_id):
         """Returns a content stored under
-        sha256_id key.
-        Return the key.
+        murmur3 128 bit key.
+        Returns the stored content.
         """
 
-    def remove(sha256_id):
+    def remove(murmur128_id):
         """Deletes a document stored uder
-        sha256_id key.
+        murmur3 128 bit key.
         Return the key.
         """
 
-    def clear(sha256_id):
+    def clear():
         """Removes all data from the storage.
         Returns None.
         """
 
-    def resolve(sha256_id):
+    def resolve(murmur128_id):
         """Check if the content exists under
         the supplied key.
-        Return non empty sha256_id as hex digest if so,
-        else return False.
+        Return non empty key as integer digest if so,
+        otherwise return False.
         """
 
     def begin():
