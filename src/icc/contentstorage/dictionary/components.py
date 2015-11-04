@@ -1,9 +1,9 @@
-from icc.contentstorage.interfaces import IDocumentStorage
+from icc.contentstorage.interfaces import IContentStorage
 from zope.interface import implementer
 import hashlib
 from icc.contentstorage import hexdigest,bindigest
 
-@implementer(IDocumentStorage)
+@implementer(IContentStorage)
 class DictionaryDocStorage(object):
     """Stores content in a kyotocabinet cool DBM.
     """

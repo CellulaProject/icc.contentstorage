@@ -10,7 +10,7 @@ package=__name__
 xmlconfig(resource_stream(package, "configure.zcml"))
 """
 
-from icc.contentstorage.interfaces import IDocumentStorage
+from icc.contentstorage.interfaces import IContentStorage
 from zope.interface import implementer, Interface
 from kyotocabinet import DB
 import os
@@ -72,7 +72,7 @@ COMP_EXT=set([
     # FIXME Add more
     ])
 
-@implementer(IDocumentStorage)
+@implementer(IContentStorage)
 class KyotoCabinetDocStorage(object):
     """Stores content in a kyotocabinet cool DBM.
     """
@@ -207,12 +207,12 @@ class KyotoCabinetDocStorage(object):
     def commit(self):
         """Commit a transaction.
         """
-        self.db.end_transaction(commit=True)
+        self.db.end_transaction()
 
     def abort(self):
         """Commit a transaction.
         """
-        self.db.end_transaction(commit=False)
+        self.db.end_transaction()
 
 class Storage(KyotoCabinetDocStorage):
     def __init__(self, ):
