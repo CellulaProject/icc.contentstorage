@@ -1,1 +1,1 @@
-from icc.contentstorage.kyotocabinet.components import Storage
+from icc.contentstorage.kyotocabinet.components import Storage, ReadOnlyStorage

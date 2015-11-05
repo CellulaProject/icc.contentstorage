@@ -151,7 +151,8 @@ class KyotoCabinetDocStorage(object):
         c_key,compressed=self.resolve_compressed(key)
         content=self.db.get(c_key)
         if compressed:
-            content=zlib.decompress(content)
+            if content != None:
+                content=zlib.decompress(content)
         return content
 
     def remove(self, key):
@@ -229,3 +230,10 @@ class Storage(KyotoCabinetDocStorage):
         filename=filename.strip("'").strip('"')
 
         KyotoCabinetDocStorage.__init__(self, filename, zlib_level=zlib_level, size_tr=size_tr)
+
+class ReadOnlyStorage(Storage):
+
+    def open(self, filename):
+        self.db=DB()
+        if not self.db.open(filename, DB.OREADER):
+            raise IOError("open error: '" + str(self.db.error())+"' on file:" + filename)
