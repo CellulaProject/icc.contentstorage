@@ -154,7 +154,7 @@ class KyotoCabinetDocStorage(object):
         - `key`: Key of a content to be deleted.
         """
         c_key,compressed=self.resolve_compressed(key)
-        print ("PhysKey:", c_key)
+        # print ("PhysKey:", c_key)
         content=self.db.get(c_key)
         if compressed:
             if content != None:
