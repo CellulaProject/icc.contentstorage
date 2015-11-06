@@ -101,7 +101,8 @@ class KyotoCabinetDocStorage(object):
 
     def open(self, filename):
         self.db=DB()
-        if not self.db.open(filename, DB.OWRITER | DB.OCREATE | DB.ONOLOCK):
+        # self.db=DB(DB.GEXCEPTIONAL)
+        if not self.db.open(filename, DB.OWRITER | DB.OCREATE | DB.ONOLOCK ):
             raise IOError("open error: '" + str(self.db.error())+"' on file:" + filename)
 
     def clear(self):
@@ -137,7 +138,9 @@ class KyotoCabinetDocStorage(object):
             new_content=zlib.compress(content, self.zlib_level)
             if len(content) > len(new_content):
                 content=new_content
+                print (c_key)
                 c_key|=1
+                print (c_key)
             else:
                 print ("STORAGE: Compressed is bigger, than original.")
         self.db.set(c_key, content)
@@ -206,17 +209,17 @@ class KyotoCabinetDocStorage(object):
         - hard: a Boolean value. True value denotes
         respect physical synchronisation.
         """
-        self.db.begin_transation(hard=hard)
+        self.db.begin_transaction(hard)
 
     def commit(self):
         """Commit a transaction.
         """
-        self.db.end_transaction()
+        self.db.end_transaction(True)
 
     def abort(self):
         """Commit a transaction.
         """
-        self.db.end_transaction()
+        self.db.end_transaction(False)
 
 class Storage(KyotoCabinetDocStorage):
     def __init__(self, ):
