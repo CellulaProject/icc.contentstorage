@@ -99,7 +99,7 @@ class KyotoCabinetDocStorage(object):
 
     def open(self, filename):
         self.db=DB()
-        if not self.db.open(filename, DB.OWRITER | DB.OCREATE):
+        if not self.db.open(filename, DB.OWRITER | DB.OCREATE | DB.ONOLOCK):
             raise IOError("open error: '" + str(self.db.error())+"' on file:" + filename)
 
     def clear(self):
@@ -149,6 +149,7 @@ class KyotoCabinetDocStorage(object):
         - `key`: Key of a content to be deleted.
         """
         c_key,compressed=self.resolve_compressed(key)
+        print ("PhysKey:", c_key)
         content=self.db.get(c_key)
         if compressed:
             if content != None:
@@ -235,5 +236,5 @@ class ReadOnlyStorage(Storage):
 
     def open(self, filename):
         self.db=DB()
-        if not self.db.open(filename, DB.OREADER):
+        if not self.db.open(filename, DB.OREADER|DB.ONOLOCK):
             raise IOError("open error: '" + str(self.db.error())+"' on file:" + filename)
