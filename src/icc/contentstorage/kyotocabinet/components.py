@@ -52,6 +52,7 @@ COMP_MIMES=set([ # https://en.wikipedia.org/wiki/List_of_archive_formats
     "application/zip",
     "application/x-zoo",
     "application/x-par2",
+    "image/vnd.djvu",
     ])
 
 COMP_EXT=set([
@@ -69,6 +70,7 @@ COMP_EXT=set([
     ".odt",
     ".odp",
     ".7z",
+    ".djvu",
     # FIXME Add more
     ])
 
