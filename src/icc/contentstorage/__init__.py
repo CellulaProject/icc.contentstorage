@@ -17,13 +17,13 @@ def hexdigest(digest):
         digest=bindigest(digest)
     return ''.join(["{:02x}".format(b) for b in digest])
 
-def bindigest(digest):
+def bindigest(digest, bs=16):
     if type(digest)==tuple:
         digest=joindigest(digest)
     if type(digest)==str:
         return bytearray.fromhex(digest)
     if type(digest)==int:
-        digest=digest.to_bytes(16, byteorder='little')
+        digest=digest.to_bytes(bs, byteorder='little')
     return digest
 
 def intdigest(digest):
@@ -56,8 +56,8 @@ def splitdigest(digest):
 
 def joindigest(digest):
     l,h=digest
-    l=bindigest(l)
-    h=bindigest(h)
+    l=bindigest(l, bs=8)
+    h=bindigest(h, bs=8)
     return l+h
 
 if __name__=="__main__":
