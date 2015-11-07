@@ -110,8 +110,11 @@ class KyotoCabinetDocStorage(object):
         """
         self.db.clear()
 
+    def hash(self, content):
+        return hash128_int(content)   # NOTE: Digest for original content.
+
     def put(self, content, metadata=None):
-        key=hash128_int(content)   # NOTE: Digest for original content.
+        key=hash(content)
         compressed=False
         if metadata != None:
             for mk in ["Content-Type", "mimetype", "mime-type", "Mime-Type"]:
@@ -180,6 +183,7 @@ class KyotoCabinetDocStorage(object):
         Arguments:
         - `key`: Key of a content to be checked.
         """
+
         c_key, compressed = self.resolve_compressed(key, no_raise=True)
         if c_key==False:
             return False
@@ -194,9 +198,9 @@ class KyotoCabinetDocStorage(object):
         key=intdigest(key)
         nc_key=key << 8     # A lot of bits can be used to store flags.
         cc_key=nc_key | 1
-        if self.db.check(cc_key):
+        if self.db.check(cc_key)>=0:
             return cc_key, True
-        if self.db.check(nc_key):
+        if self.db.check(nc_key)>=0:
             return nc_key, False
         if no_raise:
             return False, False
