@@ -18,6 +18,9 @@ from icc.contentstorage import hexdigest,intdigest,hash128_int
 from zope.component import getUtility
 import zlib
 
+import logging
+logger=logging.getLogger("icc.cellula")
+
 COMP_MIMES=set([ # https://en.wikipedia.org/wiki/List_of_archive_formats
     "application/x-bzip",
     "application/x-cpio",
@@ -111,10 +114,13 @@ class KyotoCabinetDocStorage(object):
         self.db.clear()
 
     def hash(self, content):
-        return hash128_int(content)   # NOTE: Digest for original content.
+        return hexdigest(self._hash(content))   # NOTE: Digest for original non-compressed content.
+
+    def _hash(self, content):
+        return hash128_int(content)
 
     def put(self, content, metadata=None):
-        key=hash(content)
+        key=intdigest(self._hash(content))
         compressed=False
         if metadata != None:
             for mk in ["Content-Type", "mimetype", "mime-type", "Mime-Type"]:
@@ -132,7 +138,7 @@ class KyotoCabinetDocStorage(object):
                             if filename.endswith(ext):
                                 compressed=True
                                 break
-                    print ("STORAGE got mime:", md)
+                    logger.debug("STORAGE got mime:", md)
 
         c_key=key << 8
         if not compressed and len(content)<=self.size_tr and self.zlib_level>0:
@@ -141,11 +147,9 @@ class KyotoCabinetDocStorage(object):
             new_content=zlib.compress(content, self.zlib_level)
             if len(content) > len(new_content):
                 content=new_content
-                print (c_key)
                 c_key|=1
-                print (c_key)
             else:
-                print ("STORAGE: Compressed is bigger, than original.")
+                logger.info ("STORAGE: Compressed is bigger, than original.")
         self.db.set(c_key, content)
         return hexdigest(key)
 
@@ -157,7 +161,7 @@ class KyotoCabinetDocStorage(object):
         - `key`: Key of a content to be deleted.
         """
         c_key,compressed=self.resolve_compressed(key)
-        # print ("PhysKey:", c_key)
+        logger.debug("PhysKey: %d" % c_key)
         content=self.db.get(c_key)
         if compressed:
             if content != None:
