@@ -139,7 +139,7 @@ class KyotoCabinetDocStorage(object):
                             if filename.endswith(ext):
                                 compressed=True
                                 break
-                    logger.debug("STORAGE got mime:", md)
+                    logger.debug("STORAGE got mime:" + md)
 
         #c_key=key << 8
         new_md={}
