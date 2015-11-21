@@ -122,6 +122,7 @@ class KyotoCabinetDocStorage(object):
     def put(self, content, metadata=None):
         key=intdigest(self._hash(content))
         compressed=False
+        org_size=len(content)
         if metadata != None:
             for mk in ["Content-Type", "mimetype", "mime-type", "Mime-Type"]:
                 if mk in metadata:
@@ -140,17 +141,20 @@ class KyotoCabinetDocStorage(object):
                                 break
                     logger.debug("STORAGE got mime:", md)
 
-        c_key=key << 8
+        #c_key=key << 8
+        new_md={}
         if not compressed and len(content)<=self.size_tr and self.zlib_level>0:
 #            if type(content)==str:
 #                content=content.encode("")
             new_content=zlib.compress(content, self.zlib_level)
             if len(content) > len(new_content):
                 content=new_content
-                c_key|=1
+                new_md['nfo:uncompressedSize']=org_size
             else:
                 logger.info ("STORAGE: Compressed is bigger, than original.")
-        self.db.set(c_key, content)
+        self.db.set(key, content)
+        if new_md:
+            metadata.update(new_md)
         return hexdigest(key)
 
     def get(self, key):
@@ -160,12 +164,16 @@ class KyotoCabinetDocStorage(object):
         Arguments:
         - `key`: Key of a content to be deleted.
         """
-        c_key,compressed=self.resolve_compressed(key)
+        c_key=self.resolve_compressed(key)
         logger.debug("PhysKey: %d" % c_key)
         content=self.db.get(c_key)
-        if compressed:
-            if content != None:
+        if content==None:
+            return None
+        if content[:2]==b'x\x9c':
+            try:
                 content=zlib.decompress(content)
+            except zlib.error:
+                pass # Not a compressed format
         return content
 
     def remove(self, key):
@@ -176,7 +184,7 @@ class KyotoCabinetDocStorage(object):
         - `key`: Key of a content to be deleted.
         """
 
-        c_key, compressed=self.resolve_compressed(key)
+        c_key=self.resolve_compressed(key)
         self.db.remove(c_key)
         return hexdigest(key)
 
@@ -188,7 +196,7 @@ class KyotoCabinetDocStorage(object):
         - `key`: Key of a content to be checked.
         """
 
-        c_key, compressed = self.resolve_compressed(key, no_raise=True)
+        c_key = self.resolve_compressed(key, no_raise=True)
         if c_key==False:
             return False
         return key
@@ -200,15 +208,11 @@ class KyotoCabinetDocStorage(object):
         - `key`:
         """
         key=intdigest(key)
-        nc_key=key << 8     # A lot of bits can be used to store flags.
-        cc_key=nc_key | 1
-        if self.db.check(cc_key)>=0:
-            return cc_key, True
-        if self.db.check(nc_key)>=0:
-            return nc_key, False
+        if self.db.check(key)>=0:
+            return key
         if no_raise:
-            return False, False
-        raise ValueError("no content for key")
+            return False
+        raise ValueError("no content for key: "+hexdigest(key))
 
     def begin(self, hard=True): # FIXME: Does this affect to a throughoutput?
         """Begin a transaction.
