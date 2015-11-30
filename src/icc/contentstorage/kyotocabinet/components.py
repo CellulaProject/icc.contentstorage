@@ -127,11 +127,17 @@ class KyotoCabinetDocStorage(object):
             for mk in ["Content-Type", "mimetype", "mime-type", "Mime-Type"]:
                 if mk in metadata:
                     md=metadata[mk]
-                    if md.find('comressed')>=0:
-                        compressed=True
-                        break
-                    if md in COMP_MIMES:
-                        compressed=True
+                    mdl=md
+                    if type(mdl)!=list:
+                        mdl=[mdl]
+                    for md_ in mdl:
+                        if md_.find('compressed')>=0:
+                            compressed=True
+                            break
+                        if md_ in COMP_MIMES:
+                            compressed=True
+                            break
+                    if compressed:
                         break
                     filename=metadata.get("File-Name", None)
                     if filename:
@@ -139,7 +145,7 @@ class KyotoCabinetDocStorage(object):
                             if filename.endswith(ext):
                                 compressed=True
                                 break
-                    logger.debug("STORAGE got mime:" + md)
+                    logger.debug("STORAGE got mime(s):" + str(md))
 
         #c_key=key << 8
         new_md={}
