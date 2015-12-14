@@ -180,6 +180,12 @@ class KyotoCabinetDocStorage(object):
                 content=zlib.decompress(content)
             except zlib.error:
                 pass # Not a compressed format
+        loaded_hash=self.hash(content)
+        stored_hash=hexdigest(key)
+        if (loaded_hash!=stored_hash):
+            logger.error("Hashes are different!")
+        else:
+            logger.info("Hashes are ok! %s" % loaded_hash)
         return content
 
     def remove(self, key):

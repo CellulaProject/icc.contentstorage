@@ -9,7 +9,7 @@ def hexdigest(digest):
     - `digest`: Byte array representing
     digest
     """
-    if type(digest)==tuple:
+    if type(digest) in (tuple,list):
         digest=joindigest(digest)
     if type(digest)==str:
         return digest		# implied, that string is a digest already
@@ -18,7 +18,7 @@ def hexdigest(digest):
     return ''.join(["{:02x}".format(b) for b in digest])
 
 def bindigest(digest, bs=16):
-    if type(digest)==tuple:
+    if type(digest) in (tuple,list):
         digest=joindigest(digest)
     if type(digest)==str:
         return bytearray.fromhex(digest)
@@ -27,7 +27,7 @@ def bindigest(digest, bs=16):
     return digest
 
 def intdigest(digest):
-    if type(digest)==tuple:
+    if type(digest) in (tuple,list):
         digest=joindigest(digest)
     if type(digest)==int:
         return digest
@@ -54,8 +54,14 @@ def splitdigest(digest):
     l,h=intdigest(d[:8]),intdigest(d[8:])
     return l,h
 
+two64=1<<64
+
 def joindigest(digest):
     l,h=digest
+    if l<0:
+        l=two64-l
+    if h<0:
+        h=two64-h
     l=bindigest(l, bs=8)
     h=bindigest(h, bs=8)
     return l+h
