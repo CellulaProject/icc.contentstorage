@@ -224,7 +224,7 @@ class KyotoCabinetDocStorage(object):
             return key
         if no_raise:
             return False
-        raise ValueError("no content for key: "+hexdigest(key))
+        raise KeyError("no content for key: "+hexdigest(key))
 
     def begin(self, hard=True): # FIXME: Does this affect to a throughoutput?
         """Begin a transaction.
