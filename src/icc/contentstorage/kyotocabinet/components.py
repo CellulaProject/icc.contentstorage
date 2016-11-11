@@ -14,6 +14,8 @@ from icc.contentstorage.interfaces import IContentStorage
 from zope.interface import implementer, Interface
 from kyotocabinet import DB
 import os
+import os.path
+#from pathlib import Path
 from icc.contentstorage import hexdigest,intdigest,hash128_int
 from zope.component import getUtility
 import zlib
@@ -255,6 +257,12 @@ class Storage(KyotoCabinetDocStorage):
         config=getUtility(Interface, name='configuration')
 
         filename = config['content_storage']['file']
+
+        filename = os.path.abspath(filename)
+        dirname = os.path.dirname(filename)
+        if not os.path.exists(dirname):
+            os.makedirs(dirname)
+
         zlib_level = config['content_storage'].get('zlib_level',6)
         size_tr = config['content_storage'].get('size_tr',50*1024*1024)
         filename=filename.strip("'").strip('"')
