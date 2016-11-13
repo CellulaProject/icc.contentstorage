@@ -300,8 +300,9 @@ class KyotoCabinetDocStorage(object):
                 if cb is not None:
                     cb("start", fullfn, count=count, new=None)
                 fnkey = fullfn + "#FN"  # FIXME case insensitivity
+                hfnkey = self._hash(fnkey)
                 # print("fnkey:", fnkey, self.locs.check(fnkey))
-                if self.locs.check(fnkey) >= 0:
+                if self.locs.check(hfnkey) >= 0:
                     continue
                 # print("her")
                 with open(fullfn, "rb") as infile:
@@ -310,7 +311,7 @@ class KyotoCabinetDocStorage(object):
                         # A duplicate happened
                         continue
                     self.locs.set(key, fullfn)
-                    self.locs.set(fnkey, key)
+                    self.locs.set(hfnkey, key)
                     sync += 1
                     for n, ss in enumerate(sync_size):
                         if sync % ss == 0:
