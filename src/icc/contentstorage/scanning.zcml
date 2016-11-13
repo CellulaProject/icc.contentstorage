@@ -1,0 +1,17 @@
+
+<configure
+    xmlns="http://namespaces.zope.org/zope"
+    xmlns:i18n="http://xml.zope.org/namespaces/i18n"
+    >
+  <include package="zope.component" file="meta.zcml" />
+  <!--  <i18n:registerTranslations directory="locales" /> -->
+
+  <!-- Must be before queue utility as it uses this lock -->
+  <include package="icc.contentstorage" />
+
+  <utility
+      factory="icc.contentstorage.kyotocabinet.Storage"
+      name="content"
+      />
+
+</configure>

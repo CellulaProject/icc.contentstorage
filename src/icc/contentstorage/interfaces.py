@@ -1,5 +1,6 @@
 from zope.interface import Interface
 
+
 class IContentStorage(Interface):
     """Document key-content storage interface.
     The Storage can only
