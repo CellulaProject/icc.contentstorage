@@ -15,7 +15,7 @@ logger = logging.getLogger('icc.cellula')
 
 package = __name__
 
-ini_file = resource_filename("icc.contentstorage", "../../../icc.cellula.ini")
+ini_file = resource_filename("icc.cellula", "../../../icc.cellula.ini")
 
 if ini_file is None:
     raise ValueError('.ini file not found')
@@ -27,16 +27,21 @@ config_utility.read(_config)
 GSM = getGlobalSiteManager()
 GSM.registerUtility(config_utility, Interface, name="configuration")
 
-xmlconfig(resource_stream("icc.cellula", "scanning.zcml"))
+xmlconfig(resource_stream("icc.contentstorage", "scanning.zcml"))
 
 storage = getUtility(IContentStorage, name="content")
 
 
 def callback(phase, filename, count, new):
     if phase == "start":
-        print(count, filename, end="")
+        print(count, filename)
     else:
-        print()
+        print("done")
 
 if __name__ == "__main__":
-    storage.scan_directories(cb=callback)
+    try:
+        storage.scan_directories(cb=callback)
+    except KeyboardInterrupt:
+        print("Interrupt! Synchronizing.")
+    storage.locs.synchronize(True)
+    print(storage.locs.count())

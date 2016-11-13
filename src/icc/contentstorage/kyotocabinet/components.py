@@ -194,7 +194,7 @@ class KyotoCabinetDocStorage(object):
         """
         key = intdigest(key)
 
-        if self.locs.check(key):
+        if self.locs.check(key) >= 0:
             return self._get_from_dirs(key)
 
         c_key = self.resolve_compressed(key)
@@ -287,25 +287,34 @@ class KyotoCabinetDocStorage(object):
         return count, new
 
     def scan_path(self, path, cb=None):
-        count = new = 0
+        count = new = sync = 0
+        sync_size = [10, 50]
         print("Start scanning: {}".format(path))
         for dirpath, dirnames, filenames in os.walk(path):
             # for filename in [f for f in filenames if f.endswith(".log")]:
             for filename in filenames:
+                if filename[0] in ["."]:
+                    continue
                 count += 1
                 fullfn = os.path.join(dirpath, filename)
                 if cb is not None:
                     cb("start", fullfn, count=count, new=None)
                 fnkey = fullfn + "#FN"  # FIXME case insensitivity
-                if self.locs.check(fnkey):
+                # print("fnkey:", fnkey, self.locs.check(fnkey))
+                if self.locs.check(fnkey) >= 0:
                     continue
+                # print("her")
                 with open(fullfn, "rb") as infile:
-                    key = self._hash(infile.read())
-                    if self.locs.check(key):
+                    key = self._hash(infile.read(self.size_tr))
+                    if self.locs.check(key)>=0:
                         # A duplicate happened
                         continue
                     self.locs.set(key, fullfn)
                     self.locs.set(fnkey, key)
+                    sync += 1
+                    for n, ss in enumerate(sync_size):
+                        if sync % ss == 0:
+                            self.locs.synchronize(n)
                     new += 1
                 if cb is not None:
                     cb("end", fullfn, count=count, new=new)
@@ -345,7 +354,8 @@ class Storage(KyotoCabinetDocStorage):
             os.makedirs(dirname)
 
         zlib_level = config['content_storage'].get('zlib_level', 6)
-        size_tr = config['content_storage'].get('size_tr', 50 * 1024 * 1024)
+        size_tr = config['content_storage'].get('size', 50)
+        size_tr = int(size_tr) * 1024 * 1024
         filename = filename.strip("'").strip('"')
 
         KyotoCabinetDocStorage.__init__(
