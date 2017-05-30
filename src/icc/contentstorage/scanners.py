@@ -1,51 +1,41 @@
-from icc.contentstorage.interfaces import IContentStorage
+from icc.contentstorage.interfaces import IContentStorage, IFileSystemScanner
 from zope.interface import implementer, Interface
-from kyotocabinet import DB
 import os
 import os.path
-#from pathlib import Path
 from icc.contentstorage import hexdigest, intdigest, hash128_int
-from icc.contentstorage import COMP_EXT, COMP_MIMES
 from zope.component import getUtility
-import zlib
 
 import logging
 logger = logging.getLogger("icc.contentstorage")
 
 
-@implementer(IContentStorage)
-class KyotoCabinetDocStorage(object):
+@implementer(IFileSystemScanner, IContentStorage)
+class FileSystemScanner(object):
     """Stores content in a kyotocabinet cool DBM.
     """
 
     def __init__(self,
-                 filename,
-                 pathname,
-                 zlib_level=6,
-                 size_tr=50 * 1024 * 1024,
-                 filepaths=None):
-        """Opens a storage file and start serve as a
-        module.
-        Do not compress file of size > size_tr (50 Mb by default)
-        implying them to be a multimedia.
+                 content_storage="content",
+                 location_storage="locations",
+                 dirs=None):
 
-        Arguments:
-        - `path`: Preferably full path location
-        of the file `filename` where content is to be indexed.
-        - `filepaths`: Path where file data is being found and scanned.
-        """
-        assert not filename.endswith('.kch') or not filename.endswith(
-            '.KCH'), 'wrong extension'
-        self._filename = os.path.join(pathname, filename)
-        self.pathname = pathname
-        self.filename = filename
-        if zlib_level > 9:
-            zlib_level = 9
-        if zlib_level < 0:
-            zlib_level = 0
-        self.zlib_level = zlib_level
-        self.size_tr = size_tr
-        self.db = self.open(self._filename)
+        self.content_storage = content_storage
+        self.location_storage = location_storage
+        self.dirs = dirs
+        self.initialized = False
+
+    def initialize(self):
+        if self.initialized:
+            return
+
+        if isinstance(self.content_storage, str):
+            self.content_storage = getUtility(
+                IContentStorage, self.content_storage)
+        if isinstance(self.location_storage, str):
+            self.location_storage = getUtility(
+                IContentStorage, self.location_storage)
+
+        self.initialized = True
 
     def open(self, filename):
         db = DB()
@@ -68,16 +58,14 @@ class KyotoCabinetDocStorage(object):
     def _hash(self, content):
         return hash128_int(content)
 
-    def put(self, content, id=None, features=None):
-        key = int_digest = intdigest(self._hash(content))
-        if id is not None:
-            key = id
+    def put(self, content, metadata=None):
+        key = intdigest(self._hash(content))
         compressed = False
         org_size = len(content)
-        if features is not None:
+        if metadata is not None:
             for mk in ["Content-Type", "mimetype", "mime-type", "Mime-Type"]:
-                if mk in features:
-                    md = features[mk]
+                if mk in metadata:
+                    md = metadata[mk]
                     mdl = md
                     if type(mdl) != list:
                         mdl = [mdl]
@@ -90,7 +78,7 @@ class KyotoCabinetDocStorage(object):
                             break
                     if compressed:
                         break
-                    filename = features.get("File-Name", None)
+                    filename = metadata.get("File-Name", None)
                     if filename:
                         for ext in COMP_EXT:
                             if filename.endswith(ext):
@@ -109,16 +97,11 @@ class KyotoCabinetDocStorage(object):
                 content = new_content
                 new_md['nfo:uncompressedSize'] = org_size
             else:
-                logger.info(
-                    "STORAGE: Compressed size is bigger, than original.")
+                logger.info("STORAGE: Compressed is bigger, than original.")
         self.db.set(key, content)
-        if features is not None:
-            hex_digest = hexdigest(int_digest)
-            new_md["nfo:hashValue"] = hex_digest
-            if new_md:
-                features.update(new_md)
-
-        return key
+        if new_md:
+            metadata.update(new_md)
+        return hexdigest(key)
 
     def get(self, key):
         """Returns a content stored under
@@ -128,6 +111,9 @@ class KyotoCabinetDocStorage(object):
         - `key`: Key of a content to be deleted.
         """
         key = intdigest(key)
+
+        if self.locs.check(key) >= 0:
+            return self._get_from_dirs(key)
 
         c_key = self.resolve_compressed(key)
         logger.debug("PhysKey: %d" % c_key)
@@ -145,6 +131,11 @@ class KyotoCabinetDocStorage(object):
             logger.error("Hashes are different!")
         else:
             logger.info("Hashes are ok! %s" % loaded_hash)
+        return content
+
+    def _get_from_dirs(self, key):
+        filename = self.locs.get(key)
+        content = open(filename, "rb").read()
         return content
 
     def remove(self, key):
@@ -205,23 +196,70 @@ class KyotoCabinetDocStorage(object):
         """
         self.db.end_transaction(False)
 
+    def scan_directories(self, cb=None):
+        count = 0
+        new = 0
+        for fp in self.filepaths:
+            dcount, dnew = self.scan_path(fp, cb=cb)
+            count += dcount
+            new += dnew
+        return count, new
 
-class Storage(KyotoCabinetDocStorage):
+    def scan_path(self, path, cb=None):
+        count = new = sync = 0
+        sync_size = [10, 50]
+        print("Start scanning: {}".format(path))
+        for dirpath, dirnames, filenames in os.walk(path):
+            # for filename in [f for f in filenames if f.endswith(".log")]:
+            for filename in filenames:
+                if filename[0] in ["."]:
+                    continue
+                count += 1
+                fullfn = os.path.join(dirpath, filename)
+                if cb is not None:
+                    cb("start", fullfn, count=count, new=None)
+                fnkey = fullfn + "#FN"  # FIXME case insensitivity
+                hfnkey = self._hash(fnkey)
+                # print("fnkey:", fnkey, self.locs.check(fnkey))
+                if self.locs.check(hfnkey) >= 0:
+                    continue
+                # print("her")
+                with open(fullfn, "rb") as infile:
+                    key = self._hash(infile.read(self.size_tr))
+                    if self.locs.check(key) >= 0:
+                        # A duplicate happened
+                        continue
+                    self.locs.set(key, fullfn)
+                    self.locs.set(hfnkey, key)
+                    sync += 1
+                    for n, ss in enumerate(sync_size):
+                        if sync % ss == 0:
+                            self.locs.synchronize(n)
+                    new += 1
+                if cb is not None:
+                    cb("end", fullfn, count=count, new=new)
+        return count, new
 
-    def __init__(self, prefix="content"):
+    def _init(self):
+        pass
+
+
+class ScannerStorage(FileSystemScanner):
+
+    def __init__(self, prefix="scanner"):
         """Initializes with a calue from an .ini section.
-        [${`prefix`}_storage]
-        datapath="/home/eugeneai/tmp/cellula-data/content.kch"
+        [content_scanner]
+        content_storage=content
+        location_storage=locations
+        dirs=...:....:...:....
         """
 
         config = getUtility(Interface, name='configuration')
 
-        section_name = '{}_storage'.format(prefix)
+        conf = config['{}_storage'.format(prefix)]
 
-        conf = config[section_name]
-
-        filename = conf['file']
-        pathname = conf['path']
+        content_s = conf.get('content_storage', "content")
+        location_s = conf.get('location_storage', "locations")
         dirs = conf.get('dirs', None)
         if dirs:
             dirs = dirs.split(":")
@@ -233,36 +271,7 @@ class Storage(KyotoCabinetDocStorage):
                 ndirs.append(d)
         dirs = ndirs
 
-        pathname = os.path.abspath(pathname)
-        dirname = pathname  # os.path.dirname(filename)
-        if not os.path.exists(dirname):
-            os.makedirs(dirname)
-
-        zlib_level = conf.get('zlib_level', 6)
-        size_tr = conf.get('size', 50)
-        size_tr = int(size_tr) * 1024 * 1024
-        filename = filename.strip("'").strip('"')
-
-        KyotoCabinetDocStorage.__init__(
-            self,
-            filename,
-            pathname,
-            zlib_level=zlib_level,
-            size_tr=size_tr,
-            filepaths=dirs)
-
-
-class LocationStorage(Storage):
-
-    def __init__(self, prefix="locations"):
-        super(LocationStorage, self).__init__(prefix)
-
-
-class ReadOnlyStorage(Storage):
-
-    def open(self, filename):
-        db = DB()
-        if not db.open(filename, DB.OREADER | DB.ONOLOCK):
-            raise IOError("open error: '" + str(self.db.error()) + "' on file:"
-                          + filename)
-        return db
+        super(self.__class__, self).__init__(
+            content_storage=content_s,
+            location_storage=location_s,
+            dirs=dirs)
