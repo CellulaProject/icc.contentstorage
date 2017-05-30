@@ -205,6 +205,9 @@ class KyotoCabinetDocStorage(object):
         """
         self.db.end_transaction(False)
 
+    def initialize(self):
+        pass
+
 
 class Storage(KyotoCabinetDocStorage):
 
@@ -231,7 +234,7 @@ class Storage(KyotoCabinetDocStorage):
                 if not os.path.isdir(d):
                     raise RuntimeError("{} not a directory".format(d))
                 ndirs.append(d)
-        dirs = ndirs
+            dirs = ndirs
 
         pathname = os.path.abspath(pathname)
         dirname = pathname  # os.path.dirname(filename)

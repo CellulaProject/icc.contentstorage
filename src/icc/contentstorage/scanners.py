@@ -37,19 +37,11 @@ class FileSystemScanner(object):
 
         self.initialized = True
 
-    def open(self, filename):
-        db = DB()
-
-        # self.db=DB(DB.GEXCEPTIONAL)
-        if not db.open(filename, DB.OWRITER | DB.OCREATE | DB.ONOLOCK):
-            raise IOError("open error: '" + str(self.db.error()) + "' on file:"
-                          + filename)
-        return db
-
     def clear(self):
         """Removes all records in the storage.
         """
-        self.db.clear()
+        self.content_storage.clear()
+        self.location_storage.clear()
 
     def hash(self, content):
         return hexdigest(self._hash(
@@ -59,142 +51,34 @@ class FileSystemScanner(object):
         return hash128_int(content)
 
     def put(self, content, metadata=None):
-        key = intdigest(self._hash(content))
-        compressed = False
-        org_size = len(content)
-        if metadata is not None:
-            for mk in ["Content-Type", "mimetype", "mime-type", "Mime-Type"]:
-                if mk in metadata:
-                    md = metadata[mk]
-                    mdl = md
-                    if type(mdl) != list:
-                        mdl = [mdl]
-                    for md_ in mdl:
-                        if md_.find('compressed') >= 0:
-                            compressed = True
-                            break
-                        if md_ in COMP_MIMES:
-                            compressed = True
-                            break
-                    if compressed:
-                        break
-                    filename = metadata.get("File-Name", None)
-                    if filename:
-                        for ext in COMP_EXT:
-                            if filename.endswith(ext):
-                                compressed = True
-                                break
-                    logger.debug("STORAGE got mime(s):" + str(md))
+        return self.content_storage.put(content=content, metadata=metadata)
 
-        # c_key=key << 8
-        new_md = {}
-        if not compressed and len(
-                content) <= self.size_tr and self.zlib_level > 0:
-            #            if type(content)==str:
-            #                content=content.encode("")
-            new_content = zlib.compress(content, self.zlib_level)
-            if len(content) > len(new_content):
-                content = new_content
-                new_md['nfo:uncompressedSize'] = org_size
-            else:
-                logger.info("STORAGE: Compressed is bigger, than original.")
-        self.db.set(key, content)
-        if new_md:
-            metadata.update(new_md)
-        return hexdigest(key)
-
-    def get(self, key):
-        """Returns a content stored under
-        the supplied key.
-
-        Arguments:
-        - `key`: Key of a content to be deleted.
-        """
-        key = intdigest(key)
-
-        if self.locs.check(key) >= 0:
-            return self._get_from_dirs(key)
-
-        c_key = self.resolve_compressed(key)
-        logger.debug("PhysKey: %d" % c_key)
-        content = self.db.get(c_key)
-        if content is None:
-            return None
-        if content[:2] == b'x\x9c':
-            try:
-                content = zlib.decompress(content)
-            except zlib.error:
-                pass  # Not a compressed format
-        loaded_hash = self.hash(content)
-        stored_hash = hexdigest(key)
-        if (loaded_hash != stored_hash):
-            logger.error("Hashes are different!")
-        else:
-            logger.info("Hashes are ok! %s" % loaded_hash)
-        return content
+    def get(self, id):
+        return self.content_storage.get(id)
 
     def _get_from_dirs(self, key):
         filename = self.locs.get(key)
         content = open(filename, "rb").read()
         return content
 
-    def remove(self, key):
-        """Removes a content stored under
-        the supplied key
+    def remove(self, id):
+        self.location_storage.remove(id)  # FIXME: Remove backward reference
+        return self.content_storage.remove(id)
 
-        Arguments:
-        - `key`: Key of a content to be deleted.
-        """
-
-        c_key = self.resolve_compressed(key)
-        self.db.remove(c_key)
-        return hexdigest(key)
-
-    def resolve(self, key):
-        """Figure out a content existence stored
-        under the supplied key.
-
-        Arguments:
-        - `key`: Key of a content to be checked.
-        """
-
-        c_key = self.resolve_compressed(key, no_raise=True)
-        if c_key is False:
-            return False
-        return key
-
-    def resolve_compressed(self, key, no_raise=False):
-        """Resolve compression bit in key. (?)
-        if file is compressed, then return
-        Arguments:
-        - `key`:
-        """
-        key = intdigest(key)
-        if self.db.check(key) >= 0:
-            return key
-        if no_raise:
-            return False
-        raise KeyError("no content for key: " + hexdigest(key))
+    def resolve(self, id):
+        return self.content_storage.resolve(id)
 
     def begin(self, hard=True):
-        # FIXME: Does this affect the throughoutput?
-        """Begin a transaction.
-
-        Arguments:
-        - hard: a Boolean value. True value denotes
-        respect physical synchronization.
-        """
-        self.db.begin_transaction(hard)
+        self.location_storage.begin()
+        self.content_storage.begin()
 
     def commit(self):
-        """Commit a transaction.
-        """
-        self.db.end_transaction(True)
+        self.content_storage.commit()
+        self.location_storage.commit()
 
     def abort(self):
-        """Commit a transaction.
-        """
-        self.db.end_transaction(False)
+        self.content_storage.abort()
+        self.location_storage.abort()
 
     def scan_directories(self, cb=None):
         count = 0
@@ -208,7 +92,7 @@ class FileSystemScanner(object):
     def scan_path(self, path, cb=None):
         count = new = sync = 0
         sync_size = [10, 50]
-        print("Start scanning: {}".format(path))
+        logger.info("Start scanning: {}".format(path))
         for dirpath, dirnames, filenames in os.walk(path):
             # for filename in [f for f in filenames if f.endswith(".log")]:
             for filename in filenames:
@@ -226,22 +110,25 @@ class FileSystemScanner(object):
                 # print("her")
                 with open(fullfn, "rb") as infile:
                     key = self._hash(infile.read(self.size_tr))
-                    if self.locs.check(key) >= 0:
-                        # A duplicate happened
+                    if self.location_storage.resolve(key) >= 0:
+                        # A duplicate happened``
                         continue
-                    self.locs.set(key, fullfn)
-                    self.locs.set(hfnkey, key)
+                    self.location_storage.set(key, fullfn)
+                    self.location_storage.set(hfnkey, key)
                     sync += 1
                     for n, ss in enumerate(sync_size):
                         if sync % ss == 0:
-                            self.locs.synchronize(n)
+                            # FIXME: Only for kyotucabinet.
+                            self.location_storage.locs.synchronize(n)
                     new += 1
                 if cb is not None:
                     cb("end", fullfn, count=count, new=new)
         return count, new
 
-    def _init(self):
-        pass
+
+def initialize_subscriber(event):
+    from icc.cellula import default_storage
+    default_storage().initialize()
 
 
 class ScannerStorage(FileSystemScanner):

@@ -73,6 +73,12 @@ class IContentStorage(Interface):
         """Abort current transaction.
         """
 
+    def initialize():
+        """Initialize the storage.
+        It is called, e.g., upon application
+        started.
+        """
+
 
 class IFileSystemScanner(Interface):
     """Defines a interface for file system scanners,
