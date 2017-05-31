@@ -80,16 +80,16 @@ class FileSystemScanner(object):
         self.content_storage.abort()
         self.location_storage.abort()
 
-    def scan_directories(self, cb=None):
+    def scan_directories(self, cb=None, ):
         count = 0
         new = 0
-        for fp in self.filepaths:
+        for fp in self.dirs:
             dcount, dnew = self.scan_path(fp, cb=cb)
             count += dcount
             new += dnew
         return count, new
 
-    def scan_path(self, path, cb=None):
+    def scan_path(self, path, cb=None, scanonly=False):
         count = new = sync = 0
         sync_size = [10, 50]
         logger.info("Start scanning: {}".format(path))
@@ -100,30 +100,50 @@ class FileSystemScanner(object):
                     continue
                 count += 1
                 fullfn = os.path.join(dirpath, filename)
-                if cb is not None:
-                    cb("start", fullfn, count=count, new=None)
                 fnkey = fullfn + "#FN"  # FIXME case insensitivity
                 hfnkey = self._hash(fnkey)
                 # print("fnkey:", fnkey, self.locs.check(fnkey))
-                if self.locs.check(hfnkey) >= 0:
+                if self.location_storage.resolve(hfnkey) >= 0:
+                    # The file does exist in the location storage.
+                    if cb is not None:
+                        cb("start", fullfn, count=count, new=None)
                     continue
-                # print("her")
-                with open(fullfn, "rb") as infile:
-                    key = self._hash(infile.read(self.size_tr))
-                    if self.location_storage.resolve(key) >= 0:
-                        # A duplicate happened``
-                        continue
-                    self.location_storage.set(key, fullfn)
-                    self.location_storage.set(hfnkey, key)
-                    sync += 1
-                    for n, ss in enumerate(sync_size):
-                        if sync % ss == 0:
-                            # FIXME: Only for kyotucabinet.
-                            self.location_storage.locs.synchronize(n)
+
+                if scanonly:
+                    if cb is not None:
+                        new += 1
+                        cb("start", fullfn, count=count, new=new)
+                    continue
+
+                rc = self.processfile(fullfn)
+                if rc:
                     new += 1
-                if cb is not None:
-                    cb("end", fullfn, count=count, new=new)
+                    if cb is not None:
+                        cb("end", fullfn, count=count, new=new)
+                else:
+                    if cb is not None:
+                        cb("end", fullfn, count=count, new=False)
+
         return count, new
+
+    def processfile(self, filename):
+
+        fnkey = filename + "#FN"  # FIXME case insensitivity
+        hfnkey = self._hash(fnkey)
+
+        with open(filename, "rb") as infile:
+            key = self._hash(infile.read(self.size_tr))
+            self.location_storage.set(key, filename)
+            self.location_storage.set(hfnkey, key)
+            if self.location_storage.resolve(key) >= 0:
+                # A duplicate happened
+                return False
+            # for n, ss in enumerate(sync_size):
+            #     if sync % ss == 0:
+            #         # FIXME: Only for kyotucabinet.
+            #         self.location_storage.db.synchronize(n)
+
+        return key
 
 
 def initialize_subscriber(event):
