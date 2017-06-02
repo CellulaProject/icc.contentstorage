@@ -80,18 +80,17 @@ class FileSystemScanner(object):
         self.content_storage.abort()
         self.location_storage.abort()
 
-    def scan_directories(self, cb=None, ):
+    def scan_directories(self, cb=None, scanonly=False):
         count = 0
         new = 0
         for fp in self.dirs:
-            dcount, dnew = self.scan_path(fp, cb=cb)
+            dcount, dnew = self.scan_path(fp, cb=cb, scanonly=scanonly)
             count += dcount
             new += dnew
         return count, new
 
     def scan_path(self, path, cb=None, scanonly=False):
-        count = new = sync = 0
-        sync_size = [10, 50]
+        count = new = 0
         logger.info("Start scanning: {}".format(path))
         for dirpath, dirnames, filenames in os.walk(path):
             # for filename in [f for f in filenames if f.endswith(".log")]:
