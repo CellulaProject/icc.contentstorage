@@ -96,17 +96,20 @@ class FileSystemScanner(object):
         for dirpath, dirnames, filenames in os.walk(path):
             # for filename in [f for f in filenames if f.endswith(".log")]:
             for filename in filenames:
-                if filename[0] in [".", ".."]:
-                    continue
-                _name, ext = os.path.splitext(filename)
-                if ext not in COMP_EXT:
+                if filename[0] in ["."]:
                     continue
                 count += 1
                 fullfn = os.path.join(dirpath, filename)
-                fnkey = fullfn + "#FN"  # FIXME case insensitivity
+                ext = os.path.splitext(filename)
+
+                if ext not in COMP_EXT:
+                    if cb is not None:
+                        cb("start", fullfn, count=count, new=None)
+
+                # FIXME: Use relative paths for file name -> key mapping.
+                fnkey = fullfn  # FIXME case insensitivity
                 hfnkey = self._hash(fnkey)
                 # print("fnkey:", fnkey, self.locs.check(fnkey))
-
                 if self.location_storage.resolve(hfnkey):
                     # The file does exist in the location storage.
                     if cb is not None:
@@ -127,13 +130,14 @@ class FileSystemScanner(object):
                 else:
                     if cb is not None:
                         cb("end", fullfn, count=count, new=False)
+
         logger.info("Scanning finished with count={} and new={}".format(
             count, new))
         return count, new
 
     def processfile(self, filename):
 
-        fnkey = filename + "#FN"  # FIXME case insensitivity
+        fnkey = filename  # FIXME case insensitivity
         hfnkey = self._hash(fnkey)
 
         with open(filename, "rb") as infile:
