@@ -2,8 +2,9 @@ from icc.contentstorage.interfaces import IContentStorage, IFileSystemScanner
 from zope.interface import implementer, Interface
 import os
 import os.path
-from icc.contentstorage import hexdigest, intdigest, hash128_int
+from icc.contentstorage import hexdigest, hash128_int
 from zope.component import getUtility
+from icc.contentstorage import COMP_EXT
 
 import logging
 logger = logging.getLogger("icc.contentstorage")
@@ -80,30 +81,33 @@ class FileSystemScanner(object):
         self.content_storage.abort()
         self.location_storage.abort()
 
-    def scan_directories(self, cb=None, ):
+    def scan_directories(self, cb=None, scanonly=False):
         count = 0
         new = 0
         for fp in self.dirs:
-            dcount, dnew = self.scan_path(fp, cb=cb)
+            dcount, dnew = self.scan_path(fp, cb=cb, scanonly=scanonly)
             count += dcount
             new += dnew
         return count, new
 
     def scan_path(self, path, cb=None, scanonly=False):
-        count = new = sync = 0
-        sync_size = [10, 50]
+        count = new = 0
         logger.info("Start scanning: {}".format(path))
         for dirpath, dirnames, filenames in os.walk(path):
             # for filename in [f for f in filenames if f.endswith(".log")]:
             for filename in filenames:
-                if filename[0] in ["."]:
+                if filename[0] in [".", ".."]:
+                    continue
+                _name, ext = os.path.splitext(filename)
+                if ext not in COMP_EXT:
                     continue
                 count += 1
                 fullfn = os.path.join(dirpath, filename)
                 fnkey = fullfn + "#FN"  # FIXME case insensitivity
                 hfnkey = self._hash(fnkey)
                 # print("fnkey:", fnkey, self.locs.check(fnkey))
-                if self.location_storage.resolve(hfnkey) >= 0:
+
+                if self.location_storage.resolve(hfnkey):
                     # The file does exist in the location storage.
                     if cb is not None:
                         cb("start", fullfn, count=count, new=None)
@@ -123,7 +127,8 @@ class FileSystemScanner(object):
                 else:
                     if cb is not None:
                         cb("end", fullfn, count=count, new=False)
-
+        logger.info("Scanning finished with count={} and new={}".format(
+            count, new))
         return count, new
 
     def processfile(self, filename):
@@ -135,7 +140,7 @@ class FileSystemScanner(object):
             key = self._hash(infile.read(self.size_tr))
             self.location_storage.set(key, filename)
             self.location_storage.set(hfnkey, key)
-            if self.location_storage.resolve(key) >= 0:
+            if self.location_storage.resolve(key):
                 # A duplicate happened
                 return False
             # for n, ss in enumerate(sync_size):
