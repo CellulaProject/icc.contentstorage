@@ -107,7 +107,7 @@ class FileSystemScanner(object):
 
                 if ext not in COMP_EXT:
                     if cb is not None:
-                        cb("start", fullfn, count=count, new=None)
+                        cb("start", fullfn, filename, count=count, new=None)
 
                 # FIXME: Use relative paths for file name -> key mapping.
                 fnkey = fullfn  # FIXME case insensitivity
@@ -116,33 +116,36 @@ class FileSystemScanner(object):
                 if self.location_storage.resolve(hfnkey):
                     # The file does exist in the location storage.
                     if cb is not None:
-                        cb("start", fullfn, count=count, new=None)
+                        cb("start", fullfn, filename, count=count, new=None)
                     continue
 
                 if scanonly:
                     if cb is not None:
                         new += 1
-                        cb("start", fullfn, count=count, new=new)
+                        cb("start", fullfn, filename, count=count, new=new)
                     continue
 
                 rc = self.processfile(fullfn)
                 if rc:
                     new += 1
                     if cb is not None:
-                        cb("end", fullfn, count=count, new=new)
+                        cb("end", fullfn, filename, count=count, new=new)
                 else:
                     if cb is not None:
-                        cb("end", fullfn, count=count, new=False)
+                        cb("end", fullfn, filename, count=count, new=False)
 
         return count, new
 
-    def processfile(self, filename):
+    def processfile(self, filename, features=None):
 
         fnkey = filename  # FIXME case insensitivity
         hfnkey = self._hash(fnkey)
 
+        size_tr = self.content_storage.size_tr
         with open(filename, "rb") as infile:
-            key = self._hash(infile.read(self.size_tr))
+            key = self._hash(infile.read(size_tr))
+            logger.debug("Inside process {}, {}".format(filename, features))
+            return key
             self.location_storage.set(key, filename)
             self.location_storage.set(hfnkey, key)
             if self.location_storage.resolve(key):
