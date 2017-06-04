@@ -96,13 +96,10 @@ class FileSystemScanner(object):
         for dirpath, dirnames, filenames in os.walk(path):
             # for filename in [f for f in filenames if f.endswith(".log")]:
             for filename in filenames:
-
                 if filename[0] in ["."]:
                     continue
-
                 count += 1
                 fullfn = os.path.join(dirpath, filename)
-
                 ext = os.path.splitext(filename)
 
                 if ext not in COMP_EXT:
@@ -134,6 +131,8 @@ class FileSystemScanner(object):
                     if cb is not None:
                         cb("end", fullfn, filename, count=count, new=False)
 
+        logger.info("Scanning finished with count={} and new={}".format(
+            count, new))
         return count, new
 
     def processfile(self, filename, features=None):
