@@ -2,7 +2,7 @@ from icc.contentstorage.interfaces import IContentStorage, IFileSystemScanner
 from zope.interface import implementer, Interface
 import os
 import os.path
-from icc.contentstorage import hexdigest, hash128_int
+from icc.contentstorage import hexdigest, hash128_int, bindigest
 from zope.component import getUtility
 from icc.contentstorage import COMP_EXT
 
@@ -51,22 +51,36 @@ class FileSystemScanner(object):
     def _hash(self, content):
         return hash128_int(content)
 
-    def put(self, content, metadata=None):
-        return self.content_storage.put(content=content, metadata=metadata)
+    def put(self, content, features=None):
+        return self.content_storage.put(content=content, features=features)
+
+    def resolve_location(self, id):
+        id = bytes(bindigest(id))
+        loc_key = self.location_storage.resolve(id)
+        if loc_key:
+            return loc_key, self.location_storage.get(id)
+        else:
+            return False, None
 
     def get(self, id):
-        return self.content_storage.get(id)
-
-    def _get_from_dirs(self, key):
-        filename = self.locs.get(key)
-        content = open(filename, "rb").read()
-        return content
+        loc_key, pathname = self.resolve_location(id)
+        if loc_key:
+            with open(pathname, "rb") as inp:
+                return inp.read()  # FIXME: size_tr?
+        else:
+            return self.content_storage.get(id)
 
     def remove(self, id):
-        self.location_storage.remove(id)  # FIXME: Remove backward reference
+        loc_key, pathname = self.resolve_location(id)
+        if loc_key:
+            self.location_storage.remove(id)
+            self.location_storage.remove(pathname)
         return self.content_storage.remove(id)
 
     def resolve(self, id):
+        loc_key, _ = self.resolve_location(id)
+        if loc_key:
+            return loc_key
         return self.content_storage.resolve(id)
 
     def begin(self, hard=True):
@@ -144,17 +158,18 @@ class FileSystemScanner(object):
         with open(filename, "rb") as infile:
             key = self._hash(infile.read(size_tr))
             logger.debug("Inside process {}, {}".format(filename, features))
-            return key
-            self.location_storage.set(key, filename)
-            self.location_storage.set(hfnkey, key)
+            hk = features["id"] = hexdigest(key)
+            hkb = bytes(bindigest(hk))
+            fna = filename.encode("utf-8")
+            self.location_storage.put(fna, hkb)
             if self.location_storage.resolve(key):
                 # A duplicate happened
                 return False
+            self.location_storage.put(hkb, fna)
             # for n, ss in enumerate(sync_size):
             #     if sync % ss == 0:
             #         # FIXME: Only for kyotucabinet.
             #         self.location_storage.db.synchronize(n)
-
         return key
 
 
