@@ -111,7 +111,10 @@ class KyotoCabinetDocStorage(object):
             else:
                 logger.info(
                     "STORAGE: Compressed size is bigger, than original.")
-        self.db.set(key, content)
+        rc = self.db.set(key, content)
+        if not rc:
+            raise RuntimeError(
+                "could not store the content: {}".self.db.error())
         if features is not None:
             hex_digest = hexdigest(int_digest)
             new_md["nfo:hashValue"] = hex_digest
