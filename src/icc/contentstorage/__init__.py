@@ -60,6 +60,7 @@ def splitdigest(digest):
     l, h = intdigest(d[:8]), intdigest(d[8:])
     return l, h
 
+
 two64 = 1 << 64
 
 
@@ -72,6 +73,7 @@ def joindigest(digest):
     l = bindigest(l, bs=8)
     h = bindigest(h, bs=8)
     return l + h
+
 
 COMP_MIMES = set([
     # https://en.wikipedia.org/wiki/List_of_archive_formats
