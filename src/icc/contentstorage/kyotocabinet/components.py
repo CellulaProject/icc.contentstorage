@@ -23,7 +23,9 @@ class KyotoCabinetDocStorage(object):
                  pathname,
                  zlib_level=6,
                  size_tr=50 * 1024 * 1024,
-                 filepaths=None):
+                 filepaths=None,
+                 storage_name=None
+                 ):
         """Opens a storage file and start serve as a
         module.
         Do not compress file of size > size_tr (50 Mb by default)
@@ -45,6 +47,7 @@ class KyotoCabinetDocStorage(object):
             zlib_level = 0
         self.zlib_level = zlib_level
         self.size_tr = size_tr
+        self.storage_name = storage_name
         self.db = self.open(self._filename)
 
     def open(self, filename):
@@ -249,13 +252,17 @@ class Storage(KyotoCabinetDocStorage):
         size_tr = int(size_tr) * 1024 * 1024
         filename = filename.strip("'").strip('"')
 
+        storage_name = prefix
+
         KyotoCabinetDocStorage.__init__(
             self,
             filename,
             pathname,
             zlib_level=zlib_level,
             size_tr=size_tr,
-            filepaths=dirs)
+            filepaths=dirs,
+            storage_name=storage_name
+        )
 
 
 class LocationStorage(Storage):

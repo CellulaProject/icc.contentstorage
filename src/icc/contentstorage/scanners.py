@@ -18,12 +18,15 @@ class FileSystemScanner(object):
     def __init__(self,
                  content_storage="content",
                  location_storage="locations",
-                 dirs=None):
+                 dirs=None,
+                 storage_name=None
+                 ):
 
         self.content_storage = content_storage
         self.location_storage = location_storage
         self.dirs = dirs
         self.initialized = False
+        self.storage_name = storage_name
 
     def initialize(self):
         if self.initialized:
@@ -208,4 +211,6 @@ class ScannerStorage(FileSystemScanner):
         super(self.__class__, self).__init__(
             content_storage=content_s,
             location_storage=location_s,
-            dirs=dirs)
+            dirs=dirs,
+            storage_name=prefix
+        )
