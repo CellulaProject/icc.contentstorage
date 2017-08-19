@@ -124,7 +124,7 @@ class KyotoCabinetDocStorage(object):
             if new_md:
                 features.update(new_md)
 
-        return key
+        return hexdigest(key)
 
     def get(self, key):
         """Returns a content stored under
