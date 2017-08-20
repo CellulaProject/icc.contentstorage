@@ -54,14 +54,17 @@ class FileSystemScanner(object):
     def _hash(self, content):
         return hash128_int(content)
 
-    def put(self, content, features=None):
-        return self.content_storage.put(content=content, features=features)
+    def put(self, content, id=None, features=None):
+        return self.content_storage.put(content=content,
+                                        id=id, features=features)
 
     def resolve_location(self, id):
         id = bytes(bindigest(id))
         loc_key = self.location_storage.resolve(id)
+        logger.debug(
+            "RL:Resolve location: {}->'{}'".format(hexdigest(id), loc_key))
         if loc_key:
-            return loc_key, self.location_storage.get(id)
+            return loc_key, self.location_storage.get(id).decode('utf-8')
         else:
             return False, None
 
@@ -164,11 +167,17 @@ class FileSystemScanner(object):
             hk = features["id"] = hexdigest(key)
             hkb = bytes(bindigest(hk))
             fna = filename.encode("utf-8")
-            self.location_storage.put(fna, hkb)
-            if self.location_storage.resolve(key):
+            logger.debug("FN:{}=={}".format(filename, fna))
+            assert filename == fna.decode("utf-8")
+            oldloc, okey = self.resolve_location(key)
+            if oldloc:
                 # A duplicate happened
                 return False
-            self.location_storage.put(hkb, fna)
+            self.location_storage.put(fna, id=key)
+            #logger.debug("PF:Associating {}->{}".format(fna, hkb))
+            #self.location_storage.put(hkb, id=fna)
+            # Dbugging
+            tldloc, tkey = self.resolve_location(key)
             # for n, ss in enumerate(sync_size):
             #     if sync % ss == 0:
             #         # FIXME: Only for kyotucabinet.

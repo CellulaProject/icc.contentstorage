@@ -74,7 +74,7 @@ class KyotoCabinetDocStorage(object):
     def put(self, content, id=None, features=None):
         key = int_digest = intdigest(self._hash(content))
         if id is not None:
-            key = id
+            key = intdigest(id)
         compressed = False
         org_size = len(content)
         if features is not None:
