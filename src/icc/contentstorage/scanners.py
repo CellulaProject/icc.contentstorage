@@ -184,14 +184,6 @@ class FileSystemScanner(object):
                 # A duplicate happened
                 return okey
             self.location_storage.put(fna, id=key)
-            #logger.debug("PF:Associating {}->{}".format(fna, hkb))
-            #self.location_storage.put(hkb, id=fna)
-            # Dbugging
-            ## tldloc, tkey = self.resolve_location(key)
-            # for n, ss in enumerate(sync_size):
-            #     if sync % ss == 0:
-            #         # FIXME: Only for kyotucabinet.
-            #         self.location_storage.db.synchronize(n)
         return key
 
 
