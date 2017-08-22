@@ -101,30 +101,40 @@ class FileSystemScanner(object):
         self.content_storage.abort()
         self.location_storage.abort()
 
-    def scan_directories(self, cb=None, scanonly=False):
-        count = 0
+    def scan_directories(self, cb=None, scanonly=False, count=None):
+        c = 0
         new = 0
         for fp in self.dirs:
-            dcount, dnew = self.scan_path(fp, cb=cb, scanonly=scanonly)
-            count += dcount
+            dcount, dnew = self.scan_path(
+                fp, cb=cb, scanonly=scanonly, count=count)
+            c += dcount
             new += dnew
-        return count, new
+            if count is not None:
+                count -= dcount
+                if count <= 0:
+                    break
+        return c, new
 
-    def scan_path(self, path, cb=None, scanonly=False):
-        count = new = 0
+    def scan_path(self, path, cb=None, scanonly=False, count=None):
+        c = new = 0
         logger.info("Start scanning: {}".format(path))
         for dirpath, dirnames, filenames in os.walk(path):
-            # for filename in [f for f in filenames if f.endswith(".log")]:
+            if count is not None and count <= 0:
+                break
             for filename in filenames:
                 if filename[0] in ["."]:
                     continue
-                count += 1
+                c += 1
+                if count is not None:
+                    if count <= 0:
+                        break
+                    count -= 1
                 fullfn = os.path.join(dirpath, filename)
                 ext = os.path.splitext(filename)
 
                 if ext not in COMP_EXT:
                     if cb is not None:
-                        cb("start", fullfn, filename, count=count, new=None)
+                        cb("start", fullfn, filename, count=c, new=None)
 
                 # FIXME: Use relative paths for file name -> key mapping.
                 fnkey = fullfn  # FIXME case insensitivity
@@ -133,27 +143,27 @@ class FileSystemScanner(object):
                 if self.location_storage.resolve(hfnkey):
                     # The file does exist in the location storage.
                     if cb is not None:
-                        cb("start", fullfn, filename, count=count, new=None)
+                        cb("start", fullfn, filename, count=c, new=None)
                     continue
 
                 if scanonly:
                     if cb is not None:
                         new += 1
-                        cb("start", fullfn, filename, count=count, new=new)
+                        cb("start", fullfn, filename, count=c, new=new)
                     continue
 
                 rc = self.processfile(fullfn)
                 if rc:
                     new += 1
                     if cb is not None:
-                        cb("end", fullfn, filename, count=count, new=new)
+                        cb("end", fullfn, filename, count=c, new=new)
                 else:
                     if cb is not None:
-                        cb("end", fullfn, filename, count=count, new=False)
+                        cb("end", fullfn, filename, count=c, new=False)
 
         logger.info("Scanning finished with count={} and new={}".format(
-            count, new))
-        return count, new
+            c, new))
+        return c, new
 
     def processfile(self, filename, features=None):
 
@@ -172,12 +182,12 @@ class FileSystemScanner(object):
             oldloc, okey = self.resolve_location(key)
             if oldloc:
                 # A duplicate happened
-                return False
+                return okey
             self.location_storage.put(fna, id=key)
             #logger.debug("PF:Associating {}->{}".format(fna, hkb))
             #self.location_storage.put(hkb, id=fna)
             # Dbugging
-            tldloc, tkey = self.resolve_location(key)
+            ## tldloc, tkey = self.resolve_location(key)
             # for n, ss in enumerate(sync_size):
             #     if sync % ss == 0:
             #         # FIXME: Only for kyotucabinet.
