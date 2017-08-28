@@ -1,4 +1,5 @@
 import mmh3 as mmh3
+import pprint
 
 
 def hexdigest(digest):
@@ -260,7 +261,7 @@ GOOD_MIMES = set([
     "application/x-msbinder",
     "application/x-mscardfile",
     "application/x-msclip",
-    "application/x-msdownload",
+    #    "application/x-msdownload",
     "application/x-msmediaview",
     "application/x-msmetafile",
     "application/x-msmoney",
@@ -1039,3 +1040,5 @@ for l in __MIME_DATA__.split("\n"):
         EXT_TO_MIME[ext] = mimetype
 
 GOOD_EXT = set([MIME_TO_EXT[mimetype] for mimetype in GOOD_MIMES])
+
+# pprint.pprint(EXT_TO_MIME[".exe"])
