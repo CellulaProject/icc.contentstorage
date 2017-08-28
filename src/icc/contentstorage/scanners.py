@@ -4,7 +4,7 @@ import os
 import os.path
 from icc.contentstorage import hexdigest, hash128_int, bindigest
 from zope.component import getUtility
-from icc.contentstorage import COMP_EXT
+from icc.contentstorage import GOOD_EXT
 
 import logging
 logger = logging.getLogger("icc.contentstorage")
@@ -117,7 +117,7 @@ class FileSystemScanner(object):
 
     def scan_path(self, path, cb=None, scanonly=False, count=None):
         c = new = 0
-        logger.info("Start scanning: {}".format(path))
+        logger.info("SCAN:Start scanning: {}".format(path))
         for dirpath, dirnames, filenames in os.walk(path):
             if count is not None and count <= 0:
                 break
@@ -130,11 +130,15 @@ class FileSystemScanner(object):
                         break
                     count -= 1
                 fullfn = os.path.join(dirpath, filename)
-                ext = os.path.splitext(filename)
+                filen, ext = os.path.splitext(filename)
+                ext = ext.lower()
 
-                if ext not in COMP_EXT:
+                print("SCAN:{} ext: {}".format(filen, ext))
+                if ext not in GOOD_EXT:
                     if cb is not None:
-                        cb("start", fullfn, filename, count=c, new=None)
+                        cb("start", fullfn, filename,
+                           count=c, new=True, good=False)
+                    continue
 
                 # FIXME: Use relative paths for file name -> key mapping.
                 fnkey = fullfn  # FIXME case insensitivity
@@ -143,25 +147,29 @@ class FileSystemScanner(object):
                 if self.location_storage.resolve(hfnkey):
                     # The file does exist in the location storage.
                     if cb is not None:
-                        cb("start", fullfn, filename, count=c, new=None)
+                        cb("start", fullfn, filename,
+                           count=c, new=None, good=True)
                     continue
 
                 if scanonly:
                     if cb is not None:
                         new += 1
-                        cb("start", fullfn, filename, count=c, new=new)
+                        cb("start", fullfn, filename,
+                           count=c, new=new, good=True)
                     continue
 
                 rc = self.processfile(fullfn)
                 if rc:
                     new += 1
                     if cb is not None:
-                        cb("end", fullfn, filename, count=c, new=new)
+                        cb("end", fullfn, filename, count=c,
+                           new=new, good=True)
                 else:
                     if cb is not None:
-                        cb("end", fullfn, filename, count=c, new=False)
+                        cb("end", fullfn, filename, count=c,
+                           new=False, good=True)
 
-        logger.info("Scanning finished with count={} and new={}".format(
+        logger.info("SCAN:Scanning finished with count={} and new={}".format(
             c, new))
         return c, new
 
